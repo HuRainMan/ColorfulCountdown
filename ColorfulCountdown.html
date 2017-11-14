@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+
+	<head lang="en">
+		<meta charset="UTF-8">
+		<title>倒计时...</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				list-style: none;
+				box-sizing: border-box;
+			}
+			
+			html,
+			body {
+				width: 100%;
+				height: 100%;
+				background-color: #ccc;
+			}
+			
+			#canvas {
+				box-shadow: 0 0 10px 0 #333;
+				position: relative;
+				left: 50%;
+				top: 10px;
+				transform: translate(-50%);
+			}
+			
+			#boss {
+				position: absolute;
+				width: 100%;
+				text-align: center;
+				left: 50%;
+				top: 10px;
+				transform: translate(-50%);
+				font-size: 60px;
+				letter-spacing: 0.1em;
+				color: #ccc;
+				text-shadow: 1px 1px 1px #f0f0f0, -1px -1px 1px #000;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="boss">unknowing:</div>
+		<canvas id='canvas' width="1200" height="600"></canvas>
+		<script src="./js/digit.js"></script>
+		<script>
+			var canvas = document.getElementById('canvas');
+			var ctx = canvas.getContext('2d');
+			var then;
+			//落下圆的半径
+			var r = 5;
+			// 存储圆的数组
+			var ballList = [];
+			// 数字倒计时距离canvas左边的距离
+			var leftDis = 60;
+			var topDis = 120;
+
+
+			// 初始化数字的函数
+			function initClockNum(x, y, num) {
+				// i 对应了 数字是由哪个数组所对应而生成的
+				for(var i = 0; i < digit[num].length; i++) {
+					// 如果 j 为 1; 那就画一个圆在 canvas 上面
+					for(var j = 0; j < digit[num][i].length; j++) {
+						if(digit[num][i][j] === 1) {
+							ctx.beginPath();  // 画笔动起来
+							ctx.fillStyle = 'blue'; // 使用蓝色的涂料
+							// 	x + j * (2 * (r + 1)) + (r + 1) 距离画布左边的距离 ==> 因为 j 是从零开始(r+1) 并且小球之间需要间隔 r+1	 
+							//  y + i * 2 * (r + 1) + (r + 1) 距离画布顶边的距离
+							ctx.arc(x + j * (2 * (r + 1)) + (r + 1), y + i * 2 * (r + 1) + (r + 1), r, 0, 2 * Math.PI, false);
+							ctx.fill();
+						}
+					}
+				}
+			}
+			// 产生每个数字的函数
+			function everyNum() {
+
+				// 需要单独判断天数 因为 可能天数除下来大于10从而出现bug
+				var b = parseInt(nowLeft / (60 * 60 * 24) / 10)
+				b = b > 10 ? parseInt(parseInt(nowLeft / (60 * 60 * 24) / 10) / 10) : b;
+
+				// 清空画布进行重绘
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+				initClockNum(leftDis, topDis, parseInt(nowLeft / (60 * 60 * 24) / 100));  // 剩余天数的 百位数
+				initClockNum(leftDis + 15 * (r + 1), topDis, b); // 剩余天数的 十位数
+				initClockNum(leftDis + 30 * (r + 1), topDis, parseInt(nowLeft / (60 * 60 * 24) % 10)); // 剩余天数的 个位数
+				// : 的显示
+				initClockNum(leftDis + 45 * (r + 1), topDis, 10);
+				// 小时数 开始显示
+				initClockNum(leftDis + 55 * (r + 1), topDis, parseInt(nowLeft / (60 * 60) % 24 / 10));
+				initClockNum(leftDis + 70 * (r + 1), topDis, parseInt(nowLeft / (60 * 60) % 24 % 10));
+				// :
+				initClockNum(leftDis + 85 * (r + 1), topDis, 10);
+				// 分钟数开始显示
+				initClockNum(leftDis + 95 * (r + 1), topDis, parseInt(nowLeft / 60 % 60 / 10));
+				initClockNum(leftDis + 110 * (r + 1), topDis, parseInt(nowLeft / 60 % 60 % 10));
+				// :
+				initClockNum(leftDis + 125 * (r + 1), topDis, 10);
+				// 秒数 开始显示
+				initClockNum(leftDis + 135 * (r + 1), topDis, parseInt(nowLeft % 60 / 10));
+				initClockNum(leftDis + 150 * (r + 1), topDis, parseInt(nowLeft % 60 % 10));
+
+				// 给每个掉落的小球画出来
+				for(var i = 0; i < ballList.length; i++) {
+					this.index = i;
+					// 判断 小球是否超出了画布 超出的球 被删除 
+					if(ballList[i].x <= -r || ballList[i].x > canvas.width + r) {
+						ballList.splice(this.index, 1);
+					}
+					// 画出跌落的小球
+					ctx.beginPath();
+					ctx.fillStyle = ballList[i].color;
+					ctx.arc(ballList[i].x, ballList[i].y, r, 0, 2 * Math.PI, false);
+					ctx.fill();
+
+				}
+				// 让小球动起来
+				ballsMove();
+
+			}
+
+			//    获取剩余的时间
+			function getTime() {
+				var now = new Date();
+				then = new Date(2019,11, 31, 00, 00, 00);
+				var leftTime = (then.getTime() - now.getTime()) / 1000;
+				leftTime = leftTime >= 0 ? leftTime : 0;
+				return leftTime;
+			}
+			// 当前时间 
+			var nowLeft = getTime();
+			//    检测时间是否发生了改变
+			function changeTime() {
+
+				// 获取当前的时间 ==> 每次运行函数都会回去最新的值
+				var currentTime = getTime();
+				// 剩余天数
+				var currD = parseInt(currentTime / (60 * 60 * 24));
+				// 剩余小时数
+				var currH = parseInt(currentTime / (60 * 60) % 24);
+				// 剩余的分钟数
+				var currM = parseInt(currentTime / 60 % 60);
+				// 剩余的秒数
+				var currS = parseInt(currentTime % 60);
+
+				// 上次获取的时间
+				// 剩余天数
+				var nowD = parseInt(nowLeft / (60 * 60 * 24));
+				// 剩余小时数
+				var nowH = parseInt(nowLeft / (60 * 60) % 24);
+				// 剩余的分钟数
+				var nowM = parseInt(nowLeft / 60 % 60);
+				// 剩余的秒数
+				var nowS = parseInt(nowLeft % 60);
+
+				// 需要单独判断天数 因为 可能天数除下来大于10
+				var b = parseInt(nowLeft / (60 * 60 * 24) / 10)
+				b = b > 10 ? parseInt(parseInt(nowLeft / (60 * 60 * 24) / 10) / 10) : b;
+
+				if(nowS !== currS) {
+					// 如果两次的秒数不一致 画出新的小球
+					if(parseInt(nowS % 10) !== parseInt(currS % 10)) {
+						makeBalls(leftDis + 150 * (r + 1), topDis, parseInt(nowLeft % 60 % 10));
+					}
+					if(parseInt(nowS / 10) !== parseInt(currS / 10)) {
+						makeBalls(leftDis + 135 * (r + 1), topDis, parseInt(nowLeft % 60 / 10));
+					}
+					if(parseInt(nowM % 10) !== parseInt(currM % 10)) {
+						makeBalls(leftDis + 110 * (r + 1), topDis, parseInt(nowLeft / 60 % 60 % 10));
+					}
+					if(parseInt(nowM / 10) !== parseInt(currM / 10)) {
+						makeBalls(leftDis + 95 * (r + 1), topDis, parseInt(nowLeft / 60 % 60 / 10));
+					}
+					if(parseInt(nowH % 10) !== parseInt(currH % 10)) {
+						makeBalls(leftDis + 70 * (r + 1), topDis, parseInt(nowLeft / (60 * 60) % 24 % 10));
+					}
+					if(parseInt(nowH / 10) !== parseInt(currH / 10)) {
+						makeBalls(leftDis + 55 * (r + 1), topDis, parseInt(nowLeft / (60 * 60) % 24 / 10));
+					}
+					if(parseInt(nowD % 10) !== parseInt(currD % 10)) {
+						makeBalls(leftDis + 30 * (r + 1), topDis, parseInt(nowLeft / (60 * 60 * 24) % 10));
+					}
+					if(parseInt(nowD / 10) !== parseInt(currD / 10)) {
+						makeBalls(leftDis + 15 * (r + 1), topDis, b);
+					}
+					if(parseInt(nowD / 100) !== parseInt(currD / 100)) {
+						makeBalls(leftDis, topDis, parseInt(nowLeft / (60 * 60 * 24) / 100));
+					}
+					// 更新一下之前获取的当前时间 为 现在的时间 ==> 否则 一秒刷新多少次就会刷新多少次小球
+					nowLeft = currentTime;
+				}
+			}
+
+			// 创建小球并将其存储起来 x ==> 数字水平初始值  y ==> 数字垂直初始值 num ==> 要渲染的数字
+			function makeBalls(x, y, num) {
+				for(var i = 0; i < digit[num].length; i++) {
+					for(var j = 0; j < digit[num][i].length; j++) {
+						if(digit[num][i][j] === 1) {
+							var balls = {
+								x: x + j * 2 * (r + 1) + (r + 1),
+								y: y + i * 2 * (r + 1) + (r + 1),
+								vx: Math.pow(-1, Math.ceil(Math.random() * 100)) * 2, // 随机水平速度 随机获取 +- 1;
+								vy: Math.random() * 2, // 随机 垂直方向上的速度
+								g: Math.random() * 1 + 1, // 模仿重力加速度
+								color: 'rgb(' + Math.round(Math.random() * 255) + ',' + Math.round(Math.random() * 255) + ',' + Math.round(Math.random() * 255) + ')' // 随机小球的颜色
+							};
+							// 将生成的小球放到 小球之家
+							ballList.push(balls);
+						}
+					}
+				}
+			}
+
+			// 跌落小球的运动
+			function ballsMove() {
+				for(var i = 0; i < ballList.length; i++) {
+					ballList[i].x += ballList[i].vx;
+					ballList[i].y += ballList[i].vy;
+					ballList[i].vy += ballList[i].g;
+					// 如果 小球跌落到地面了 开启反弹的模式
+					if(ballList[i].y >= canvas.height - r) {
+						ballList[i].y = canvas.height - r;
+						ballList[i].vy = -0.75 * ballList[i].vy; // 反弹之后动能衰减 ==> 可能是小球具有弹性==>能量出现的损失
+					}
+				}
+			}
+			
+			// 调用函数 将倒计时的数字渲染到页面
+			everyNum();
+			window.setInterval(function() {
+				changeTime()
+				everyNum();
+			}, 1000/30)
+		</script>
+	</body>
+
+</html>
